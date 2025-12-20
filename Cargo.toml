@@ -1,5 +1,6 @@
 [package]
 name = "waveshare-ups-hat-e"
+description = "A Rust library to monitor the status of a Waveshare UPS HAT E on a Raspberry Pi"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85.0"
