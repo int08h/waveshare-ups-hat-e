@@ -6,7 +6,7 @@ A Rust library for monitoring the [Waveshare UPS HAT (E)](https://www.waveshare.
 
 Output from the [`ups_monitor`](examples/ups_monitor.rs) example demonstrating the type of information available:
 
-![Screenshot of ups_monitor example](images/screenshot.png)
+![Screenshot of ups_monitor example](https://github.com/int08h/waveshare-ups-hat-e/blob/master/images/screenshot.png?raw=true)
 
 ## Usage
 
