@@ -55,6 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 | [`get_cell_voltage`](UpsHatE::get_cell_voltage) | Individual cell voltages (4 cells) |
 | [`get_usbc_vbus`](UpsHatE::get_usbc_vbus) | USB-C voltage, current, power |
 | [`get_communication_state`](UpsHatE::get_communication_state) | Communication status with BQ4050 and IP2368 chips |
+| [`get_software_revision`](UpsHatE::get_software_revision) | Firmware revision of the UPS microcontroller |
 | [`is_battery_low`](UpsHatE::is_battery_low) | Check if battery voltage is below threshold |
 | [`is_power_off_pending`](UpsHatE::is_power_off_pending) | Check if a power-off has been initiated |
 | [`force_power_off`](UpsHatE::force_power_off) | Initiate power-off in 30 seconds (cannot be canceled) |

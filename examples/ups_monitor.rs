@@ -17,6 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ups = UpsHatE::new();
     let mut stdout = io::stdout();
 
+    let software_revision = ups.get_software_revision()?;
+
     loop {
         let battery = ups.get_battery_state()?;
         let power = ups.get_power_state()?;
@@ -30,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let epoch_secs = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
-        println!("{BOLD}UPS HAT (E) Monitor{RESET}");
+        println!("{BOLD}UPS HAT (E) Rev {:0x} Monitor{RESET}", software_revision);
         println!("═══════════════════════════════════════════");
         println!("Unix time: {epoch_secs}");
         println!();
@@ -41,7 +43,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Activity:     {:?}", power.charger_activity);
         println!("  USB-C In:     {:?}", power.usbc_input_state);
         println!("  USB-C PD:     {:?}", power.usbc_power_delivery);
-        println!("  Off Pending:  {}", if power_off_pending { "Yes" } else { "No" });
+        println!("  Off Pending?  {}", if power_off_pending { "Yes" } else { "No" });
+        println!();
+
+        // Communication state
+        println!("{BOLD}Communication{RESET}");
+        println!("  BQ4050:       {:?}", comm.bq4050);
+        println!("  IP2368:       {:?}", comm.ip2368);
         println!();
 
         // Battery
@@ -50,12 +58,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Voltage:      {} mV", battery.millivolts);
         println!("  Current:      {} mA", battery.milliamps);
         println!("  Capacity:     {} mAh", battery.remaining_capacity_milliamphours);
-        println!("  Low:          {}", if battery_low { "Yes" } else { "No" });
         if battery.milliamps < 0 {
             println!("  Est. Runtime: {} min", battery.remaining_runtime_minutes);
         } else if battery.time_to_full_minutes > 0 {
             println!("  Time To Full: {} min", battery.time_to_full_minutes);
         }
+        println!("  Low Battery?  {}", if battery_low { "Yes" } else { "No" });
         println!();
 
         // USB-C VBUS
@@ -71,12 +79,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Cell 2:       {} mV", cells.cell_2_millivolts);
         println!("  Cell 3:       {} mV", cells.cell_3_millivolts);
         println!("  Cell 4:       {} mV", cells.cell_4_millivolts);
-        println!();
-
-        // Communication state
-        println!("{BOLD}Communication{RESET}");
-        println!("  BQ4050:       {:?}", comm.bq4050);
-        println!("  IP2368:       {:?}", comm.ip2368);
         println!();
 
         println!("Press Ctrl+C to exit");

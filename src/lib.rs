@@ -13,6 +13,7 @@ use registers::{
     BATTERY_REG, CELL_VOLTAGE_REG, CHARGING_REG, COMMUNICATION_REG, ChargerActivity, ChargingState,
     CommState, POWEROFF_REG, USBC_VBUS_REG, UsbCInputState, UsbCPowerDelivery,
 };
+use crate::registers::SOFTWARE_REV_REG;
 
 /// Default I2C address of the Waveshare UPS Hat E
 pub const DEFAULT_I2C_ADDRESS: u16 = 0x2d;
@@ -198,6 +199,11 @@ impl UpsHatE {
         let bq4050 = CommState::from(byte & (1 << 1) != 0);
 
         Ok(CommunicationState { bq4050, ip2368 })
+    }
+    
+    pub fn get_software_revision(&mut self) -> Result<u8, Error> {
+        let data = self.read_block(SOFTWARE_REV_REG.id, SOFTWARE_REV_REG.length)?;
+        Ok(data[0])
     }
 
     /// Returns true if the overall battery voltage is less than or equal to

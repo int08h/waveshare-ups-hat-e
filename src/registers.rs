@@ -41,8 +41,15 @@ pub(crate) const CELL_VOLTAGE_REG: RegisterBlock = RegisterBlock {
     length: 8,
 };
 
+/// Write to power-off, read to see if power-off is pending
 pub (crate) const POWEROFF_REG: RegisterBlock = RegisterBlock {
     id: 0x01,
+    length: 1,
+};
+
+/// Software revision of the UPS firmware
+pub (crate) const SOFTWARE_REV_REG: RegisterBlock = RegisterBlock {
+    id: 0x50,
     length: 1,
 };
 
