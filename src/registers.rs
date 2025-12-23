@@ -41,6 +41,11 @@ pub(crate) const CELL_VOLTAGE_REG: RegisterBlock = RegisterBlock {
     length: 8,
 };
 
+pub (crate) const POWEROFF_REG: RegisterBlock = RegisterBlock {
+    id: 0x01,
+    length: 1,
+};
+
 /// What kind of charging (if any) is taking place?
 #[derive(Debug)]
 pub enum ChargerActivity {
@@ -66,6 +71,23 @@ impl TryFrom<u8> for ChargerActivity {
             0b101 => Ok(ChargerActivity::Full),
             0b110 => Ok(ChargerActivity::Timeout),
             _ => Err(Error::InvalidChargerActivity(value)),
+        }
+    }
+}
+
+/// State of the UPS microcontroller's communications with an on-board chip.
+#[derive(Debug)]
+pub enum CommState {
+    Error = 0b0,
+    Normal = 0b1,
+}
+
+impl From<bool> for CommState {
+    fn from(value: bool) -> Self {
+        if value  {
+            CommState::Normal
+        } else {
+            CommState::Error
         }
     }
 }

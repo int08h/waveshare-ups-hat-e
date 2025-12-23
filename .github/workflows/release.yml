@@ -22,13 +22,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        include:
+        target:
           # Raspberry Pi 3/4/5 (64-bit)
-          - target: aarch64-unknown-linux-musl
-            artifact_name: ups_monitor-aarch64-linux-musl
+          - aarch64-unknown-linux-musl
           # Raspberry Pi 2/3/4 (32-bit)
-          - target: armv7-unknown-linux-musleabihf
-            artifact_name: ups_monitor-armv7-linux-musleabihf
+          - armv7-unknown-linux-musleabihf
 
     steps:
       - name: Checkout
@@ -40,15 +38,18 @@ jobs:
       - name: Install cross
         run: cargo install cross --git https://github.com/cross-rs/cross
 
-      - name: Build example
-        run: cross build --release --example ups_monitor --target ${{ matrix.target }}
+      - name: Build examples
+        run: cross build --release --examples --target ${{ matrix.target }}
 
-      - name: Rename binary
+      - name: Rename binaries
         run: |
-          cp target/${{ matrix.target }}/release/examples/ups_monitor ${{ matrix.artifact_name }}
+          cp target/${{ matrix.target }}/release/examples/ups_monitor ups_monitor-${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/examples/force_power_off force_power_off-${{ matrix.target }}
 
-      - name: Upload binary to release
+      - name: Upload binaries to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
-          files: ${{ matrix.artifact_name }}
+          files: |
+            ups_monitor-${{ matrix.target }}
+            force_power_off-${{ matrix.target }}

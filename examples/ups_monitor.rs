@@ -1,6 +1,8 @@
 // Copyright (c) 2025 Stuart Stock
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
+//! A "top" like monitor for the Waveshare UPS Hat E.
+//!
 use std::io::{self, Write};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -18,8 +20,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let battery = ups.get_battery_state()?;
         let power = ups.get_power_state()?;
+        let comm = ups.get_communication_state()?;
         let vbus = ups.get_usbc_vbus()?;
         let cells = ups.get_cell_voltage()?;
+        let battery_low = ups.is_battery_low()?;
+        let power_off_pending = ups.is_power_off_pending()?;
 
         print!("{CLEAR_SCREEN}{CURSOR_HOME}");
 
@@ -36,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Activity:     {:?}", power.charger_activity);
         println!("  USB-C In:     {:?}", power.usbc_input_state);
         println!("  USB-C PD:     {:?}", power.usbc_power_delivery);
+        println!("  Off Pending:  {}", if power_off_pending { "Yes" } else { "No" });
         println!();
 
         // Battery
@@ -44,10 +50,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Voltage:      {} mV", battery.millivolts);
         println!("  Current:      {} mA", battery.milliamps);
         println!("  Capacity:     {} mAh", battery.remaining_capacity_milliamphours);
+        println!("  Low:          {}", if battery_low { "Yes" } else { "No" });
         if battery.milliamps < 0 {
             println!("  Est. Runtime: {} min", battery.remaining_runtime_minutes);
         } else if battery.time_to_full_minutes > 0 {
-            println!("  Time Full:    {} min", battery.time_to_full_minutes);
+            println!("  Time To Full: {} min", battery.time_to_full_minutes);
         }
         println!();
 
@@ -64,6 +71,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Cell 2:       {} mV", cells.cell_2_millivolts);
         println!("  Cell 3:       {} mV", cells.cell_3_millivolts);
         println!("  Cell 4:       {} mV", cells.cell_4_millivolts);
+        println!();
+
+        // Communication state
+        println!("{BOLD}Communication{RESET}");
+        println!("  BQ4050:       {:?}", comm.bq4050);
+        println!("  IP2368:       {:?}", comm.ip2368);
         println!();
 
         println!("Press Ctrl+C to exit");

@@ -10,8 +10,8 @@ use error::Error;
 use i2cdev::core::I2CDevice;
 use i2cdev::linux::LinuxI2CDevice;
 use registers::{
-    BATTERY_REG, CELL_VOLTAGE_REG, CHARGING_REG, USBC_VBUS_REG,
-    ChargerActivity, ChargingState, UsbCInputState, UsbCPowerDelivery,
+    BATTERY_REG, CELL_VOLTAGE_REG, CHARGING_REG, COMMUNICATION_REG, ChargerActivity, ChargingState,
+    CommState, POWEROFF_REG, USBC_VBUS_REG, UsbCInputState, UsbCPowerDelivery,
 };
 
 /// Default I2C address of the Waveshare UPS Hat E
@@ -20,13 +20,30 @@ pub const DEFAULT_I2C_ADDRESS: u16 = 0x2d;
 /// The default I2C bus device path to interface with the UPS Hat E
 pub const DEFAULT_I2C_DEV_PATH: &str = "/dev/i2c-1";
 
-/// Represent the composite power state of the UPS Hat E.
+/// The default threshold for low cell voltage, in millivolts. The UPS Hat E low-voltage cutoff
+/// is observed to be 3.2V (not documented), using 3.4V for our cutoff so there's enough power
+/// remaining to run a shutdown sequence.
+pub const DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD: u16 = 3400; // 3.4V
+
+/// Value to write to the [`POWEROFF_REG`] register to initiate a power-off, or if read from
+/// [`POWEROFF_REG`], indicates that a power-off is pending.
+pub const POWEROFF_VALUE: u8 = 0x55;
+
+/// Represents the composite power state of the UPS Hat E.
 #[derive(Debug)]
 pub struct PowerState {
     pub charging_state: ChargingState,
     pub charger_activity: ChargerActivity,
     pub usbc_input_state: UsbCInputState,
     pub usbc_power_delivery: UsbCPowerDelivery,
+}
+
+/// Ability of the UPS to communicate with the on-board BQ4050 gas gauge chip and IP2368 battery
+/// charge management chip.
+#[derive(Debug)]
+pub struct CommunicationState {
+    pub bq4050: CommState,
+    pub ip2368: CommState,
 }
 
 /// Aggregate battery state of the UPS Hat E.
@@ -171,6 +188,50 @@ impl UpsHatE {
             usbc_input_state,
             usbc_power_delivery,
         })
+    }
+
+    pub fn get_communication_state(&mut self) -> Result<CommunicationState, Error> {
+        let data = self.read_block(COMMUNICATION_REG.id, COMMUNICATION_REG.length)?;
+        let byte = data[0];
+
+        let ip2368 = CommState::from(byte & (1 << 0) != 0);
+        let bq4050 = CommState::from(byte & (1 << 1) != 0);
+
+        Ok(CommunicationState { bq4050, ip2368 })
+    }
+
+    /// Returns true if the overall battery voltage is less than or equal to
+    /// `(4 * DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD)`.
+    ///
+    /// If you want an easy "is the battery low?" indicator, use this function.
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_battery_low(&mut self) -> Result<bool, Error> {
+        const CUTOFF: u32 = 4 * DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD as u32;
+
+        let cell_voltages = self.get_cell_voltage()?;
+
+        let total_voltage: u32 = (cell_voltages.cell_1_millivolts
+            + cell_voltages.cell_2_millivolts
+            + cell_voltages.cell_3_millivolts
+            + cell_voltages.cell_4_millivolts) as u32;
+
+        Ok(total_voltage <= CUTOFF)
+    }
+
+    /// Unconditionally and uncleanly power-off the Raspberry Pi in 30 seconds.
+    ///
+    /// This operation cannot be canceled once called.
+    pub fn force_power_off(&mut self) -> Result<(), Error> {
+        self.i2c_bus
+            .smbus_write_byte_data(POWEROFF_REG.id, POWEROFF_VALUE)?;
+        Ok(())
+    }
+
+    /// Returns true if a power-off has been initiated.
+    #[allow(clippy::wrong_self_convention)]
+    pub fn is_power_off_pending(&mut self) -> Result<bool, Error> {
+        let data = self.read_block(POWEROFF_REG.id, POWEROFF_REG.length)?;
+        Ok(data[0] == POWEROFF_VALUE)
     }
 
     fn read_block(&mut self, register: u8, length: u8) -> Result<Vec<u8>, Error> {
