@@ -32,38 +32,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let epoch_secs = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
 
-        println!("{BOLD}UPS HAT (E) Rev {:0x} Monitor{RESET}", software_revision);
+        println!("{BOLD}UPS HAT (E) Monitor{RESET}");
         println!("═══════════════════════════════════════════");
         println!("Unix time: {epoch_secs}");
         println!();
 
+        println!("{BOLD}UPS Info{RESET}");
+        println!("  Software Rev:  {:?}", software_revision);
+        println!();
+
         // Power state
         println!("{BOLD}Power{RESET}");
-        println!("  State:        {:?}", power.charging_state);
-        println!("  Activity:     {:?}", power.charger_activity);
-        println!("  USB-C In:     {:?}", power.usbc_input_state);
-        println!("  USB-C PD:     {:?}", power.usbc_power_delivery);
-        println!("  Off Pending?  {}", if power_off_pending { "Yes" } else { "No" });
+        println!("  State:         {:?}", power.charging_state);
+        println!("  Activity:      {:?}", power.charger_activity);
+        println!("  USB-C In:      {:?}", power.usbc_input_state);
+        println!("  USB-C PD:      {:?}", power.usbc_power_delivery);
+        println!("  Off Pending?   {}", if power_off_pending { "Yes" } else { "No" });
         println!();
 
         // Communication state
         println!("{BOLD}Communication{RESET}");
-        println!("  BQ4050:       {:?}", comm.bq4050);
-        println!("  IP2368:       {:?}", comm.ip2368);
+        println!("  BQ4050:        {:?}", comm.bq4050);
+        println!("  IP2368:        {:?}", comm.ip2368);
         println!();
 
         // Battery
         println!("{BOLD}Battery{RESET}");
-        println!("  Charge:       {}%", battery.remaining_percent);
-        println!("  Voltage:      {} mV", battery.millivolts);
-        println!("  Current:      {} mA", battery.milliamps);
-        println!("  Capacity:     {} mAh", battery.remaining_capacity_milliamphours);
+        println!("  Charge:        {}%", battery.remaining_percent);
+        println!("  Voltage:       {} mV", battery.millivolts);
+        println!("  Current:       {} mA", battery.milliamps);
+        println!("  Est. Capacity: {} mAh", battery.remaining_capacity_milliamphours);
         if battery.milliamps < 0 {
-            println!("  Est. Runtime: {} min", battery.remaining_runtime_minutes);
+            println!("  Est. Runtime:  {} min", battery.remaining_runtime_minutes);
         } else if battery.time_to_full_minutes > 0 {
-            println!("  Time To Full: {} min", battery.time_to_full_minutes);
+            println!("  Time To Full:  {} min", battery.time_to_full_minutes);
         }
-        println!("  Low Battery?  {}", if battery_low { "Yes" } else { "No" });
+        println!("  Low Battery?   {}", if battery_low { "Yes" } else { "No" });
         println!();
 
         // USB-C VBUS
