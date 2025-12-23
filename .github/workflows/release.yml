@@ -46,10 +46,17 @@ jobs:
           cp target/${{ matrix.target }}/release/examples/ups_monitor ups_monitor-${{ matrix.target }}
           cp target/${{ matrix.target }}/release/examples/force_power_off force_power_off-${{ matrix.target }}
 
+      - name: Generate checksums
+        run: |
+          sha256sum ups_monitor-${{ matrix.target }} > ups_monitor-${{ matrix.target }}.sha256
+          sha256sum force_power_off-${{ matrix.target }} > force_power_off-${{ matrix.target }}.sha256
+
       - name: Upload binaries to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           files: |
             ups_monitor-${{ matrix.target }}
+            ups_monitor-${{ matrix.target }}.sha256
             force_power_off-${{ matrix.target }}
+            force_power_off-${{ matrix.target }}.sha256
