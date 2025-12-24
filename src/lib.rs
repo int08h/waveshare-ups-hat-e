@@ -118,10 +118,10 @@ impl UpsHatE {
         let data = self.read_block(CELL_VOLTAGE_REG.id, CELL_VOLTAGE_REG.length)?;
 
         let voltages = CellVoltage {
-            cell_1_millivolts: data[0] as u16 | (data[1] as u16) << 8,
-            cell_2_millivolts: data[2] as u16 | (data[3] as u16) << 8,
-            cell_3_millivolts: data[4] as u16 | (data[5] as u16) << 8,
-            cell_4_millivolts: data[6] as u16 | (data[7] as u16) << 8,
+            cell_1_millivolts: u16::from_le_bytes([data[0], data[1]]),
+            cell_2_millivolts: u16::from_le_bytes([data[2], data[3]]),
+            cell_3_millivolts: u16::from_le_bytes([data[4], data[5]]),
+            cell_4_millivolts: u16::from_le_bytes([data[6], data[7]]),
         };
 
         Ok(voltages)
@@ -131,9 +131,9 @@ impl UpsHatE {
         let data = self.read_block(USBC_VBUS_REG.id, USBC_VBUS_REG.length)?;
 
         let vbus = UsbCVBus {
-            millivolts: data[0] as u16 | (data[1] as u16) << 8,
-            milliamps: data[2] as u16 | (data[3] as u16) << 8,
-            milliwatts: data[4] as u16 | (data[5] as u16) << 8,
+            millivolts: u16::from_le_bytes([data[0], data[1]]),
+            milliamps: u16::from_le_bytes([data[2], data[3]]),
+            milliwatts: u16::from_le_bytes([data[4], data[5]]),
         };
 
         Ok(vbus)
@@ -142,31 +142,21 @@ impl UpsHatE {
     pub fn get_battery_state(&mut self) -> Result<BatteryState, Error> {
         let data = self.read_block(BATTERY_REG.id, BATTERY_REG.length)?;
 
-        let milliamps: i16 = {
-            let mut current = data[2] as i32 | (data[3] as i32) << 8;
-            // sign treatment mimics the reference python code
-            if current > 0x7fff {
-                current -= 0xffff;
-            }
-            current as i16
-        };
+        let milliamps = i16::from_le_bytes([data[2], data[3]]);
 
-        let mut remaining_runtime_minutes: u16 = 0;
-        let mut time_to_full_minutes: u16 = 0;
-
-        if milliamps < 0 {
+        let (remaining_runtime_minutes, time_to_full_minutes) = if milliamps < 0 {
             // negative means discharging the battery
-            remaining_runtime_minutes = data[8] as u16 | (data[9] as u16) << 8;
+            (u16::from_le_bytes([data[8], data[9]]), 0)
         } else {
             // positive means charging the battery, power is available
-            time_to_full_minutes = data[10] as u16 | (data[11] as u16) << 8;
-        }
+            (0, u16::from_le_bytes([data[10], data[11]]))
+        };
 
         let state = BatteryState {
-            millivolts: data[0] as u16 | (data[1] as u16) << 8,
+            millivolts: u16::from_le_bytes([data[0], data[1]]),
             milliamps,
-            remaining_percent: data[4] as u16 | (data[5] as u16) << 8,
-            remaining_capacity_milliamphours: data[6] as u16 | (data[7] as u16) << 8,
+            remaining_percent: u16::from_le_bytes([data[4], data[5]]),
+            remaining_capacity_milliamphours: u16::from_le_bytes([data[6], data[7]]),
             remaining_runtime_minutes,
             time_to_full_minutes,
         };
