@@ -42,19 +42,19 @@ pub(crate) const CELL_VOLTAGE_REG: RegisterBlock = RegisterBlock {
 };
 
 /// Write to power-off, read to see if power-off is pending
-pub (crate) const POWEROFF_REG: RegisterBlock = RegisterBlock {
+pub(crate) const POWEROFF_REG: RegisterBlock = RegisterBlock {
     id: 0x01,
     length: 1,
 };
 
 /// Software revision of the UPS firmware
-pub (crate) const SOFTWARE_REV_REG: RegisterBlock = RegisterBlock {
+pub(crate) const SOFTWARE_REV_REG: RegisterBlock = RegisterBlock {
     id: 0x50,
     length: 1,
 };
 
 /// What kind of charging (if any) is taking place?
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChargerActivity {
     Standby = 0b000,
     Trickle = 0b001,
@@ -83,7 +83,7 @@ impl TryFrom<u8> for ChargerActivity {
 }
 
 /// State of the UPS microcontroller's communications with an on-board chip.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CommState {
     Error = 0b0,
     Normal = 0b1,
@@ -91,7 +91,7 @@ pub enum CommState {
 
 impl From<bool> for CommState {
     fn from(value: bool) -> Self {
-        if value  {
+        if value {
             CommState::Normal
         } else {
             CommState::Error
@@ -100,7 +100,7 @@ impl From<bool> for CommState {
 }
 
 /// Is USB-C power detected?
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UsbCInputState {
     NoPower = 0b0,
     Powered = 0b1,
@@ -117,7 +117,7 @@ impl From<bool> for UsbCInputState {
 }
 
 /// Was USB-C power delivery negotiated (`FastCharging`) or not (`StandardCharging`)?
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum UsbCPowerDelivery {
     StandardCharging = 0b0,
     FastCharging = 0b1,
@@ -134,7 +134,7 @@ impl From<bool> for UsbCPowerDelivery {
 }
 
 /// Is the UPS charging or not?
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ChargingState {
     NotCharging = 0b0,
     Charging = 0b1,

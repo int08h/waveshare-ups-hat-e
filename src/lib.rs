@@ -11,9 +11,8 @@ use i2cdev::core::I2CDevice;
 use i2cdev::linux::LinuxI2CDevice;
 use registers::{
     BATTERY_REG, CELL_VOLTAGE_REG, CHARGING_REG, COMMUNICATION_REG, ChargerActivity, ChargingState,
-    CommState, POWEROFF_REG, USBC_VBUS_REG, UsbCInputState, UsbCPowerDelivery,
+    CommState, POWEROFF_REG, SOFTWARE_REV_REG, USBC_VBUS_REG, UsbCInputState, UsbCPowerDelivery,
 };
-use crate::registers::SOFTWARE_REV_REG;
 
 /// Default I2C address of the Waveshare UPS Hat E
 pub const DEFAULT_I2C_ADDRESS: u16 = 0x2d;
@@ -31,7 +30,7 @@ pub const DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD: u16 = 3400; // 3.4V
 pub const POWEROFF_VALUE: u8 = 0x55;
 
 /// Represents the composite power state of the UPS Hat E.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PowerState {
     pub charging_state: ChargingState,
     pub charger_activity: ChargerActivity,
@@ -41,7 +40,7 @@ pub struct PowerState {
 
 /// Ability of the UPS to communicate with the on-board BQ4050 gas gauge chip and IP2368 battery
 /// charge management chip.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CommunicationState {
     pub bq4050: CommState,
     pub ip2368: CommState,
@@ -54,7 +53,7 @@ pub struct CommunicationState {
 ///
 /// The Waveshare wiki states it may take a few charge cycles for the UPS to calibrate the
 /// `remaining_*` and `time_to_full_minutes` values correctly.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BatteryState {
     pub millivolts: u16,
     pub milliamps: i16,
@@ -65,7 +64,7 @@ pub struct BatteryState {
 }
 
 /// Voltage readings for each of the four battery cells.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CellVoltage {
     pub cell_1_millivolts: u16,
     pub cell_2_millivolts: u16,
@@ -74,7 +73,7 @@ pub struct CellVoltage {
 }
 
 /// Voltage and current readings from the USB-C port.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UsbCVBus {
     pub millivolts: u16,
     pub milliamps: u16,
@@ -90,22 +89,24 @@ pub struct UpsHatE {
     i2c_bus: LinuxI2CDevice,
 }
 
-impl Default for UpsHatE {
-    /// Create a new instance of the UPS Hat E monitor using the default I2C bus device path and
-    /// address. This works in most cases.
-    fn default() -> Self {
-        let i2c = LinuxI2CDevice::new(DEFAULT_I2C_DEV_PATH, DEFAULT_I2C_ADDRESS)
-            .expect("Failed to open I2C device");
-
-        Self { i2c_bus: i2c }
-    }
-}
-
 impl UpsHatE {
     /// Create a new instance of the UPS Hat E monitor using the default I2C bus device path and
     /// address. This works in most cases.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the I2C device cannot be opened. Use [`UpsHatE::try_new`] to handle that
+    /// failure instead.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Self::default()
+        Self::try_new().expect("Failed to open I2C device")
+    }
+
+    /// Create a new instance of the UPS Hat E monitor using the default I2C bus device path and
+    /// address, returning an error if the I2C device cannot be opened.
+    pub fn try_new() -> Result<Self, Error> {
+        let i2c_bus = LinuxI2CDevice::new(DEFAULT_I2C_DEV_PATH, DEFAULT_I2C_ADDRESS)?;
+        Ok(Self { i2c_bus })
     }
 
     /// Expert option: create a new instance of the UPS Hat E monitor using a custom I2C bus device
@@ -190,28 +191,30 @@ impl UpsHatE {
 
         Ok(CommunicationState { bq4050, ip2368 })
     }
-    
+
     pub fn get_software_revision(&mut self) -> Result<u8, Error> {
         let data = self.read_block(SOFTWARE_REV_REG.id, SOFTWARE_REV_REG.length)?;
         Ok(data[0])
     }
 
-    /// Returns true if the overall battery voltage is less than or equal to
-    /// `(4 * DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD)`.
+    /// Returns true if the voltage of the lowest cell is less than or equal to
+    /// [`DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD`].
+    ///
+    /// The UPS cuts power when any single cell reaches its low-voltage cutoff, so the weakest
+    /// cell (not the pack average) determines how much runtime remains.
     ///
     /// If you want an easy "is the battery low?" indicator, use this function.
     #[allow(clippy::wrong_self_convention)]
     pub fn is_battery_low(&mut self) -> Result<bool, Error> {
-        const CUTOFF: u32 = 4 * DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD as u32;
+        let cells = self.get_cell_voltage()?;
 
-        let cell_voltages = self.get_cell_voltage()?;
+        let lowest_cell = cells
+            .cell_1_millivolts
+            .min(cells.cell_2_millivolts)
+            .min(cells.cell_3_millivolts)
+            .min(cells.cell_4_millivolts);
 
-        let total_voltage: u32 = (cell_voltages.cell_1_millivolts
-            + cell_voltages.cell_2_millivolts
-            + cell_voltages.cell_3_millivolts
-            + cell_voltages.cell_4_millivolts) as u32;
-
-        Ok(total_voltage <= CUTOFF)
+        Ok(lowest_cell <= DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD)
     }
 
     /// Unconditionally and uncleanly power-off the Raspberry Pi in 30 seconds.
@@ -234,7 +237,11 @@ impl UpsHatE {
         let data = self.i2c_bus.smbus_read_i2c_block_data(register, length)?;
 
         if data.len() != length as usize {
-            return Err(Error::InvalidDataLen(register, length as usize, data.len()));
+            return Err(Error::InvalidDataLen {
+                register,
+                expected: length as usize,
+                actual: data.len(),
+            });
         }
 
         Ok(data)

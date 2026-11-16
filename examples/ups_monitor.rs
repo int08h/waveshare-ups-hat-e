@@ -47,7 +47,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Activity:      {:?}", power.charger_activity);
         println!("  USB-C In:      {:?}", power.usbc_input_state);
         println!("  USB-C PD:      {:?}", power.usbc_power_delivery);
-        println!("  Off Pending?   {}", if power_off_pending { "Yes" } else { "No" });
+        println!(
+            "  Off Pending?   {}",
+            if power_off_pending { "Yes" } else { "No" }
+        );
         println!();
 
         // Communication state
@@ -61,13 +64,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("  Charge:        {}%", battery.remaining_percent);
         println!("  Voltage:       {} mV", battery.millivolts);
         println!("  Current:       {} mA", battery.milliamps);
-        println!("  Est. Capacity: {} mAh", battery.remaining_capacity_milliamphours);
+        println!(
+            "  Est. Capacity: {} mAh",
+            battery.remaining_capacity_milliamphours
+        );
         if battery.milliamps < 0 {
             println!("  Est. Runtime:  {} min", battery.remaining_runtime_minutes);
         } else if battery.time_to_full_minutes > 0 {
             println!("  Time To Full:  {} min", battery.time_to_full_minutes);
         }
-        println!("  Low Battery?   {}", if battery_low { "Yes" } else { "No" });
+        println!(
+            "  Low Battery?   {}",
+            if battery_low { "Yes" } else { "No" }
+        );
         println!();
 
         // USB-C VBUS

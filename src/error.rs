@@ -6,8 +6,15 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum Error {
+    /// An error from the underlying I2C device.
     I2CError(LinuxI2CError),
-    InvalidDataLen(u8, usize, usize),
+    /// A block read from `register` returned a different number of bytes than expected.
+    InvalidDataLen {
+        register: u8,
+        expected: usize,
+        actual: usize,
+    },
+    /// The 3-bit charger activity field held a value with no defined meaning.
     InvalidChargerActivity(u8),
 }
 
@@ -15,14 +22,18 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::I2CError(e) => write!(f, "I2C error: {e}"),
-            Error::InvalidDataLen(reg, expected, got) => {
+            Error::InvalidDataLen {
+                register,
+                expected,
+                actual,
+            } => {
                 write!(
                     f,
-                    "Reading register {reg} invalid data length: expected {expected}, got {got}"
+                    "Reading register {register:#04x} invalid data length: expected {expected}, got {actual}"
                 )
             }
             Error::InvalidChargerActivity(val) => {
-                write!(f, "Invalid charger activity value: {val}")
+                write!(f, "Invalid charger activity value: {val:#05b}")
             }
         }
     }
@@ -32,7 +43,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::I2CError(e) => Some(e),
-            Error::InvalidDataLen(..) | Error::InvalidChargerActivity(_) => None,
+            Error::InvalidDataLen { .. } | Error::InvalidChargerActivity(_) => None,
         }
     }
 }
