@@ -31,6 +31,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # Build the tagged source, including on manual re-uploads.
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -51,12 +54,17 @@ jobs:
           sha256sum ups_monitor-${{ matrix.target }} > ups_monitor-${{ matrix.target }}.sha256
           sha256sum force_power_off-${{ matrix.target }} > force_power_off-${{ matrix.target }}.sha256
 
+      # gh only uploads assets; it never edits the release itself. Editing a
+      # release with GITHUB_TOKEN fails with a 403 when the tagged commit's
+      # workflow files differ from the default branch.
       - name: Upload binaries to release
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: ${{ inputs.tag || github.ref_name }}
-          files: |
-            ups_monitor-${{ matrix.target }}
-            ups_monitor-${{ matrix.target }}.sha256
-            force_power_off-${{ matrix.target }}
-            force_power_off-${{ matrix.target }}.sha256
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            "ups_monitor-$TARGET" \
+            "ups_monitor-$TARGET.sha256" \
+            "force_power_off-$TARGET" \
+            "force_power_off-$TARGET.sha256"
