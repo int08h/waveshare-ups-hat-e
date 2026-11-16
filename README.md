@@ -10,11 +10,11 @@ Output from the [`ups_monitor`](examples/ups_monitor.rs) example demonstrating t
 
 ## Usage
 
-```rust
+```rust,no_run
 use waveshare_ups_hat_e::UpsHatE;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut ups = UpsHatE::new();
+    let mut ups = UpsHatE::new()?;
 
     let battery = ups.get_battery_state()?;
     println!("Battery: {}% ({} mV, {} mA)",
@@ -50,13 +50,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 | Method | Description |
 |--------|-------------|
+| [`new`](UpsHatE::new) | Open the UPS on the default I2C bus and address, returning an error on failure |
 | [`get_battery_state`](UpsHatE::get_battery_state) | Voltage, current, capacity, remaining runtime |
 | [`get_power_state`](UpsHatE::get_power_state) | Charging state, USB-C input, power delivery mode |
 | [`get_cell_voltage`](UpsHatE::get_cell_voltage) | Individual cell voltages (4 cells) |
 | [`get_usbc_vbus`](UpsHatE::get_usbc_vbus) | USB-C voltage, current, power |
 | [`get_communication_state`](UpsHatE::get_communication_state) | Communication status with BQ4050 and IP2368 chips |
 | [`get_software_revision`](UpsHatE::get_software_revision) | Firmware revision of the UPS microcontroller |
-| [`is_battery_low`](UpsHatE::is_battery_low) | Check if battery voltage is below threshold |
+| [`is_battery_low`](UpsHatE::is_battery_low) | Check if the lowest cell is at or below `DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD` |
 | [`is_power_off_pending`](UpsHatE::is_power_off_pending) | Check if a power-off has been initiated |
 | [`force_power_off`](UpsHatE::force_power_off) | Initiate power-off in 30 seconds (cannot be canceled) |
 
