@@ -21,9 +21,9 @@ pub const DEFAULT_I2C_ADDRESS: u16 = 0x2d;
 pub const DEFAULT_I2C_DEV_PATH: &str = "/dev/i2c-1";
 
 /// The default threshold for low cell voltage, in millivolts. The UPS Hat E low-voltage cutoff
-/// is observed to be 3.2V (not documented), using 3.4V for our cutoff so there's enough power
-/// remaining to run a shutdown sequence.
-pub const DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD: u16 = 3400; // 3.4V
+/// is observed to be 3.2V (actual value is not documented). We use 3.3V for the cutoff so there's
+/// enough power remaining to run a shutdown sequence.
+pub const DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD: u16 = 3300; // 3.3V
 
 /// Value to write to the power-off register (`0x01`) to initiate a power-off, or if read from
 /// that register, indicates that a power-off is pending.
