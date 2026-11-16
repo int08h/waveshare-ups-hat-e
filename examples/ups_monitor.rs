@@ -14,7 +14,7 @@ const BOLD: &str = "\x1b[1m";
 const RESET: &str = "\x1b[0m";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut ups = UpsHatE::new();
+    let mut ups = UpsHatE::new()?;
     let mut stdout = io::stdout();
 
     let software_revision = ups.get_software_revision()?;

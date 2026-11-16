@@ -38,7 +38,7 @@ fn main() {
         exit(1);
     }
 
-    let mut ups = UpsHatE::new();
+    let mut ups = UpsHatE::new().expect("failed to open I2C device");
 
     ups.force_power_off()
         .expect("failed to issue power-off command");

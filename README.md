@@ -14,7 +14,7 @@ Output from the [`ups_monitor`](examples/ups_monitor.rs) example demonstrating t
 use waveshare_ups_hat_e::UpsHatE;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut ups = UpsHatE::try_new()?;
+    let mut ups = UpsHatE::new()?;
 
     let battery = ups.get_battery_state()?;
     println!("Battery: {}% ({} mV, {} mA)",
@@ -50,8 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 | Method | Description |
 |--------|-------------|
-| [`try_new`](UpsHatE::try_new) | Open the UPS on the default I2C bus and address, returning an error on failure |
-| [`new`](UpsHatE::new) | Same as `try_new`, but panics if the I2C device cannot be opened |
+| [`new`](UpsHatE::new) | Open the UPS on the default I2C bus and address, returning an error on failure |
 | [`get_battery_state`](UpsHatE::get_battery_state) | Voltage, current, capacity, remaining runtime |
 | [`get_power_state`](UpsHatE::get_power_state) | Charging state, USB-C input, power delivery mode |
 | [`get_cell_voltage`](UpsHatE::get_cell_voltage) | Individual cell voltages (4 cells) |

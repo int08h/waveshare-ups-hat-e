@@ -93,18 +93,10 @@ impl UpsHatE {
     /// Create a new instance of the UPS Hat E monitor using the default I2C bus device path and
     /// address. This works in most cases.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the I2C device cannot be opened. Use [`UpsHatE::try_new`] to handle that
-    /// failure instead.
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Self::try_new().expect("Failed to open I2C device")
-    }
-
-    /// Create a new instance of the UPS Hat E monitor using the default I2C bus device path and
-    /// address, returning an error if the I2C device cannot be opened.
-    pub fn try_new() -> Result<Self, Error> {
+    /// Returns [`Error::I2CError`] if the I2C device cannot be opened.
+    pub fn new() -> Result<Self, Error> {
         let i2c_bus = LinuxI2CDevice::new(DEFAULT_I2C_DEV_PATH, DEFAULT_I2C_ADDRESS)?;
         Ok(Self { i2c_bus })
     }
