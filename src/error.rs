@@ -4,6 +4,7 @@
 use i2cdev::linux::LinuxI2CError;
 use std::fmt;
 
+/// Errors returned when communicating with the UPS Hat E.
 #[derive(Debug)]
 pub enum Error {
     /// An error from the underlying I2C device.

@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let comm = ups.get_communication_state()?;
         let vbus = ups.get_usbc_vbus()?;
         let cells = ups.get_cell_voltage()?;
-        let battery_low = ups.is_battery_low()?;
+        let battery_low = cells.is_low();
         let power_off_pending = ups.is_power_off_pending()?;
 
         print!("{CLEAR_SCREEN}{CURSOR_HOME}");

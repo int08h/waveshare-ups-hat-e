@@ -25,8 +25,8 @@ pub const DEFAULT_I2C_DEV_PATH: &str = "/dev/i2c-1";
 /// remaining to run a shutdown sequence.
 pub const DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD: u16 = 3400; // 3.4V
 
-/// Value to write to the [`POWEROFF_REG`] register to initiate a power-off, or if read from
-/// [`POWEROFF_REG`], indicates that a power-off is pending.
+/// Value to write to the power-off register (`0x01`) to initiate a power-off, or if read from
+/// that register, indicates that a power-off is pending.
 pub const POWEROFF_VALUE: u8 = 0x55;
 
 /// Represents the composite power state of the UPS Hat E.
@@ -72,6 +72,24 @@ pub struct CellVoltage {
     pub cell_4_millivolts: u16,
 }
 
+impl CellVoltage {
+    /// Returns the voltage of the lowest of the four cells, in millivolts.
+    pub fn lowest_millivolts(&self) -> u16 {
+        self.cell_1_millivolts
+            .min(self.cell_2_millivolts)
+            .min(self.cell_3_millivolts)
+            .min(self.cell_4_millivolts)
+    }
+
+    /// Returns true if the lowest cell is at or below [`DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD`].
+    ///
+    /// The UPS cuts power when any single cell reaches its low-voltage cutoff, so the weakest
+    /// cell (not the pack average) determines how much runtime remains.
+    pub fn is_low(&self) -> bool {
+        self.lowest_millivolts() <= DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD
+    }
+}
+
 /// Voltage and current readings from the USB-C port.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UsbCVBus {
@@ -85,6 +103,7 @@ pub struct UsbCVBus {
 ///
 /// This struct can monitor the UPS HAT status, such as battery voltage, current, power, and
 /// other interesting information
+#[derive(Debug)]
 pub struct UpsHatE {
     i2c_bus: LinuxI2CDevice,
 }
@@ -195,18 +214,11 @@ impl UpsHatE {
     /// The UPS cuts power when any single cell reaches its low-voltage cutoff, so the weakest
     /// cell (not the pack average) determines how much runtime remains.
     ///
-    /// If you want an easy "is the battery low?" indicator, use this function.
-    #[allow(clippy::wrong_self_convention)]
+    /// If you want an easy "is the battery low?" indicator, use this function. If you have
+    /// already read the cells with [`UpsHatE::get_cell_voltage`], use [`CellVoltage::is_low`]
+    /// to avoid a second I2C read.
     pub fn is_battery_low(&mut self) -> Result<bool, Error> {
-        let cells = self.get_cell_voltage()?;
-
-        let lowest_cell = cells
-            .cell_1_millivolts
-            .min(cells.cell_2_millivolts)
-            .min(cells.cell_3_millivolts)
-            .min(cells.cell_4_millivolts);
-
-        Ok(lowest_cell <= DEFAULT_CELL_LOW_VOLTAGE_THRESHOLD)
+        Ok(self.get_cell_voltage()?.is_low())
     }
 
     /// Unconditionally and uncleanly power-off the Raspberry Pi in 30 seconds.
@@ -219,7 +231,6 @@ impl UpsHatE {
     }
 
     /// Returns true if a power-off has been initiated.
-    #[allow(clippy::wrong_self_convention)]
     pub fn is_power_off_pending(&mut self) -> Result<bool, Error> {
         let data = self.read_block(POWEROFF_REG.id, POWEROFF_REG.length)?;
         Ok(data[0] == POWEROFF_VALUE)
