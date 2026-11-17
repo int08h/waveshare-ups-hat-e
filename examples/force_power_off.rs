@@ -60,8 +60,8 @@ fn prompt_for_confirmation() -> bool {
     input.trim().eq_ignore_ascii_case("y")
 }
 
-/// Turns status into a message and exit code.
-fn message_and_exit_code(status: Result<bool, Error>) -> (String, ExitCode) {
+/// Determines the outcome of the power-off from the UPS's pending power-off status.
+fn power_off_outcome(status: Result<bool, Error>) -> (String, ExitCode) {
     match status {
         Ok(true) => (
             "UPS will power-off the attached Raspberry Pi in 30 seconds".to_string(),
@@ -101,7 +101,7 @@ fn main() {
     ups.force_power_off()
         .expect("failed to issue power-off command");
 
-    let (message, exit_code) = message_and_exit_code(ups.is_power_off_pending());
+    let (message, exit_code) = power_off_outcome(ups.is_power_off_pending());
     println!("{message}");
     exit_code.exit();
 }
@@ -144,14 +144,14 @@ mod tests {
 
     #[test]
     fn pending_power_off_reports_the_countdown() {
-        let (message, exit_code) = message_and_exit_code(Ok(true));
+        let (message, exit_code) = power_off_outcome(Ok(true));
         assert_eq!(exit_code, ExitCode::PowerOffPending);
         assert!(message.contains("30 seconds"), "message: {message}");
     }
 
     #[test]
     fn power_off_not_pending_is_an_error() {
-        let (message, exit_code) = message_and_exit_code(Ok(false));
+        let (message, exit_code) = power_off_outcome(Ok(false));
         assert_eq!(exit_code, ExitCode::NoPowerOff);
         assert!(message.starts_with("Error:"), "message: {message}");
     }
@@ -165,7 +165,7 @@ mod tests {
         };
         let cause = read_failure.to_string();
 
-        let (message, exit_code) = message_and_exit_code(Err(read_failure));
+        let (message, exit_code) = power_off_outcome(Err(read_failure));
         assert_eq!(exit_code, ExitCode::Unverified);
         assert!(message.contains("30 seconds"), "message: {message}");
         assert!(message.contains(&cause), "message: {message}");
