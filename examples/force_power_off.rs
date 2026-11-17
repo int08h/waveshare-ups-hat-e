@@ -16,10 +16,20 @@ use std::process::exit;
 use waveshare_ups_hat_e::UpsHatE;
 use waveshare_ups_hat_e::error::Error;
 
-const EXIT_POWER_OFF_PENDING: i32 = 0;
-const EXIT_NOT_SENT: i32 = 1;
-const EXIT_POWER_OFF_NOT_PENDING: i32 = 2;
-const EXIT_POWER_OFF_UNVERIFIED: i32 = 3;
+/// The process exit codes; see the list at the top of this file for what each one means.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ExitCode {
+    PowerOffPending = 0,
+    NotSent = 1,
+    PowerOffNotPending = 2,
+    PowerOffUnverified = 3,
+}
+
+impl ExitCode {
+    fn exit(self) -> ! {
+        exit(self as i32)
+    }
+}
 
 /// How the power-off is confirmed, as selected by the command line arguments.
 #[derive(Debug, PartialEq, Eq)]
@@ -30,10 +40,6 @@ enum Confirmation {
     Skip,
 }
 
-/// Parses the command line arguments (excluding the program name).
-///
-/// Returns `None` for anything other than no arguments or exactly `-y`. An invocation that is
-/// not understood must never reach the confirmation prompt, let alone the power-off.
 fn parse_args(args: &[String]) -> Option<Confirmation> {
     match args {
         [] => Some(Confirmation::Prompt),
@@ -50,26 +56,24 @@ fn prompt_for_confirmation() -> bool {
     std::io::stdin()
         .read_line(&mut input)
         .expect("failed to read input");
+
     input.trim().eq_ignore_ascii_case("y")
 }
 
 /// Turns the status read that follows an accepted power-off command into the exit code and the
 /// message for the user.
-///
-/// The power-off cannot be canceled once the UPS accepts the command, so a failed status read
-/// must still warn about the countdown.
-fn power_off_report(status: Result<bool, Error>) -> (i32, String) {
+fn power_off_report(status: Result<bool, Error>) -> (ExitCode, String) {
     match status {
         Ok(true) => (
-            EXIT_POWER_OFF_PENDING,
+            ExitCode::PowerOffPending,
             "UPS will power-off the attached Raspberry Pi in 30 seconds".to_string(),
         ),
         Ok(false) => (
-            EXIT_POWER_OFF_NOT_PENDING,
+            ExitCode::PowerOffNotPending,
             "Error: UPS failed to initiate power-off".to_string(),
         ),
         Err(err) => (
-            EXIT_POWER_OFF_UNVERIFIED,
+            ExitCode::PowerOffUnverified,
             format!(
                 "Warning: UPS accepted the power-off command, but reading its status failed: {err}\n\
                  Assume the UPS will power-off the attached Raspberry Pi in 30 seconds"
@@ -85,22 +89,22 @@ fn main() {
         println!("Usage: force_power_off [-y]");
         println!("  -y: skip confirmation prompt");
         println!();
-        exit(EXIT_NOT_SENT);
+        ExitCode::NotSent.exit();
     };
 
     if confirmation == Confirmation::Prompt && !prompt_for_confirmation() {
         println!("Aborting power-off due to user input. Use -y to skip confirmation prompt.");
-        exit(EXIT_NOT_SENT);
+        ExitCode::NotSent.exit();
     }
 
-    let mut ups = UpsHatE::new().expect("failed to open I2C device");
+    let mut ups = UpsHatE::new().expect("failed to open UPS device");
 
     ups.force_power_off()
         .expect("failed to issue power-off command");
 
     let (exit_code, message) = power_off_report(ups.is_power_off_pending());
     println!("{message}");
-    exit(exit_code);
+    exit_code.exit();
 }
 
 #[cfg(test)]
@@ -142,14 +146,14 @@ mod tests {
     #[test]
     fn pending_power_off_reports_the_countdown() {
         let (exit_code, message) = power_off_report(Ok(true));
-        assert_eq!(exit_code, EXIT_POWER_OFF_PENDING);
+        assert_eq!(exit_code, ExitCode::PowerOffPending);
         assert!(message.contains("30 seconds"), "message: {message}");
     }
 
     #[test]
     fn power_off_not_pending_is_an_error() {
         let (exit_code, message) = power_off_report(Ok(false));
-        assert_eq!(exit_code, EXIT_POWER_OFF_NOT_PENDING);
+        assert_eq!(exit_code, ExitCode::PowerOffNotPending);
         assert!(message.starts_with("Error:"), "message: {message}");
     }
 
@@ -163,7 +167,7 @@ mod tests {
         let cause = read_failure.to_string();
 
         let (exit_code, message) = power_off_report(Err(read_failure));
-        assert_eq!(exit_code, EXIT_POWER_OFF_UNVERIFIED);
+        assert_eq!(exit_code, ExitCode::PowerOffUnverified);
         assert!(message.contains("30 seconds"), "message: {message}");
         assert!(message.contains(&cause), "message: {message}");
     }
