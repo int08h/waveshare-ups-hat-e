@@ -11,3 +11,7 @@ exclude = [".idea/"]
 
 [dependencies]
 i2cdev = "0.6.2"
+# Run the unit tests of the argument and status handling as part of `cargo test`.
+[[example]]
+name = "force_power_off"
+test = true
